@@ -8,5 +8,5 @@ Read all about the technical documentation on https://github.com/BuildingSMART/B
 
 For information about API-based BCF communication, please refer to: https://github.com/BuildingSMART/BCF-API
 
-This repository contains a plugin implementations for:
+This repository contains a plugin implementation for:
 - [Rhino](Implementations/Rhino)
