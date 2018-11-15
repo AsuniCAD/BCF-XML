@@ -28,7 +28,7 @@ namespace BCFXML
 
 		protected override Result RunCommand(RhinoDoc doc, RunMode mode)
 		{
-			using (System.Diagnostics.Process.Start("https://github.com/AsuniCAD/BCF-XML")) { }
+			using (System.Diagnostics.Process.Start("https://github.com/AsuniCAD/BCF-XML/tree/development/Implementations/Rhino")) { }
 
 			return Result.Success;
 		}
