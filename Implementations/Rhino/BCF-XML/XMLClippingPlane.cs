@@ -8,9 +8,9 @@ using System.Xml;
 namespace BCFXML
 {
     /// <summary>
-    /// XML Camera from BCF file
+    /// XML Clipping Plane from BCF file
     /// </summary>
-    public class XMLCamera
+    public class XMLClippingPlane
     {
         /// <summary>
         /// Location Point
@@ -18,26 +18,19 @@ namespace BCFXML
         public Rhino.Geometry.Point3d Location;
 
         /// <summary>
-        /// Camera Direction
+        /// Direction
         /// </summary>
         public Rhino.Geometry.Vector3d Direction;
 
         /// <summary>
-        /// Up Vector
-        /// </summary>
-        public Rhino.Geometry.Vector3d UpVector;
-
-        /// <summary>
-        /// Create new XML Camera from XML node
+        /// Create new XML Clipping Plane from XML node
         /// </summary>
         /// <param name="node"></param>
         /// <param name="scaleFactor"></param>
-        public XMLCamera(XmlNode node, double scaleFactor)
+        public XMLClippingPlane(XmlNode node, double scaleFactor)
         {
-            this.Location = node.SelectSingleNode("CameraViewPoint").toPoint(scaleFactor);
-            this.Direction = node.SelectSingleNode("CameraDirection").toVector();
-            this.UpVector = node.SelectSingleNode("CameraUpVector").toVector();
+            this.Location = node.SelectSingleNode("Location").toPoint(scaleFactor);
+            this.Direction = node.SelectSingleNode("Direction").toVector();
         }
-
     }
 }

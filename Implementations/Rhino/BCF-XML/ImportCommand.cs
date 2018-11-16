@@ -36,8 +36,11 @@ namespace BCFXML
         /// <param name="filepath">bcfv xml file</param>
         /// <param name="scaleFactor"></param>
         /// <returns>Camera details as XMLCamera</returns>
-        public static XMLCamera GetXMLCameraFromVisInfo(string filepath, double scaleFactor)
+        public static bool ParseVisInfo(string filepath, double scaleFactor, out XMLCamera cam, out List<XMLClippingPlane> planes)
         {
+            planes = new List<XMLClippingPlane>();
+            cam = null;
+
             // https://github.com/buildingSMART/BCF-XML/tree/release_2_1/Schemas
             try
             {
@@ -45,11 +48,19 @@ namespace BCFXML
                 doc.Load(filepath);
                 XmlNode visinfo = doc.SelectSingleNode("VisualizationInfo");
                 XmlNode camera = visinfo.SelectSingleNode("PerspectiveCamera");
-                return new XMLCamera(camera, scaleFactor);
+                if (camera != null) cam = new XMLCamera(camera, scaleFactor);
+                XmlNode cplanes = visinfo.SelectSingleNode("ClippingPlanes");
+                if (cplanes != null) {
+                    foreach (XmlNode cp in cplanes.ChildNodes)
+                    {
+                        planes.Add(new XMLClippingPlane(cp, scaleFactor));
+                    }
+                }
+                return true;
             }
             catch
             {
-                return null;
+                return false;
             }
         }
 
@@ -64,9 +75,11 @@ namespace BCFXML
             List<string> bcfvs = ExtractZip.ExtractBCFVFiles(fd.FileName);
             foreach (string bcfv in bcfvs)
             {
-                // 3) translate camera data from xml to XMLCamera
-                var cam = GetXMLCameraFromVisInfo(bcfv, 1.0);
-                if (cam == null) return Rhino.Commands.Result.Cancel;
+                // 3) translate camera & clipping plane data from xml
+                XMLCamera cam = null;
+                List<XMLClippingPlane> planes = new List<XMLClippingPlane>();
+                bool success = ParseVisInfo(bcfv, 1.0, out cam, out planes);
+                if (!success) return Rhino.Commands.Result.Cancel;
 
                 // 4) get active view
                 var view = doc.Views.ActiveView;
@@ -80,6 +93,14 @@ namespace BCFXML
                 vp.SetCameraDirection(cam.Direction, true);
                 vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
                 doc.NamedViews.Add(vp.Name, vp.Id);
+
+                foreach (XMLClippingPlane plane in planes)
+                {
+                    double magnitude = 100; // not sure if this value makes much sense
+                    Plane cplane = new Plane(plane.Location, plane.Direction);
+                    doc.Objects.AddClippingPlane(cplane, magnitude, magnitude, vp.Id);
+                }
+
                 view.Redraw();
             }
 
