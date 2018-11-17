@@ -64,13 +64,38 @@ namespace BCFXML
             }
         }
 
+        /// <summary>
+        /// returns a scalefactor for common AEC units
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <returns></returns>
+        private static double GetScaleFactor(RhinoDoc doc)
+        {
+            // All BCF Viewpoint data is in meters by default
+            switch (doc.ModelUnitSystem)
+            {
+                // Metric
+                case UnitSystem.Millimeters: return 1000;
+                case UnitSystem.Centimeters: return 100;
+                case UnitSystem.Decimeters: return 10;
+                case UnitSystem.Meters: return 1.0;
+
+                // Imperial
+                case UnitSystem.Miles: return 0.000621371;
+                case UnitSystem.Feet: return 3.28084;
+                case UnitSystem.Inches: return 39.3701;
+
+                default: return 1;
+            }
+        }
+
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
             // 1) select BCF-Zip file
             var fd = new Rhino.UI.OpenFileDialog { Filter = "BCF Files (*.bcfzip;*.bcf)|*.bcfzip;*.bcf" };
             if (!fd.ShowOpenDialog())
                 return Rhino.Commands.Result.Cancel;
-
+            
             // 2) Extract all bcfv files from bcf
             List<string> bcfvs = ExtractZip.ExtractBCFVFiles(fd.FileName);
             foreach (string bcfv in bcfvs)
@@ -78,7 +103,8 @@ namespace BCFXML
                 // 3) translate camera & clipping plane data from xml
                 XMLCamera cam = null;
                 List<XMLClippingPlane> planes = new List<XMLClippingPlane>();
-                bool success = ParseVisInfo(bcfv, 1.0, out cam, out planes);
+                double scaleFactor = GetScaleFactor(doc);
+                bool success = ParseVisInfo(bcfv, scaleFactor, out cam, out planes);
                 if (!success) return Rhino.Commands.Result.Cancel;
 
                 // 4) get active view
