@@ -119,7 +119,7 @@ namespace BCFXML
                 vp.SetCameraDirection(cam.Direction, true);
                 vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
                 doc.NamedViews.Add(vp.Name, vp.Id);
-
+                
                 foreach (XMLClippingPlane plane in planes)
                 {
                     double magnitude = 100; // not sure if this value makes much sense
@@ -127,10 +127,58 @@ namespace BCFXML
                     doc.Objects.AddClippingPlane(cplane, magnitude, magnitude, vp.Id);
                 }
 
+                bcfConduit = new BCFConduit();
+                bcfConduit.Title = vp.Name;
+                bcfConduit.Enabled = true;
                 view.Redraw();
             }
 
+            Rhino.Display.RhinoView.SetActive += RhinoView_SetActive;
+
             return Result.Success;
         }
+
+        /// <summary>
+        /// BCF Viewport conduit
+        /// </summary>
+        BCFConduit bcfConduit;
+
+        /// <summary>
+        /// Toggle BCF Conduit on and off depeding on the active viewport
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void RhinoView_SetActive(object sender, Rhino.Display.ViewEventArgs e)
+        {
+            if (e.View.ActiveViewport.Name.Contains("Viewpoint"))
+                bcfConduit.Enabled = true;
+            else
+                bcfConduit.Enabled = false;
+            e.View.Document.Views.Redraw();
+        }
     }
+
+    /// <summary>
+    /// BCF Conduit
+    /// </summary>
+    class BCFConduit : Rhino.Display.DisplayConduit
+    {
+        /// <summary>
+        /// Title to Display
+        /// </summary>
+        public string Title = "Untitled";
+
+        protected override void DrawForeground(Rhino.Display.DrawEventArgs e)
+        {
+            // Draw only on top of BCF Viewpoints
+            if (e.Viewport.Name.Contains("Viewpoint"))
+            {
+                var bounds = e.Viewport.Bounds;
+                var pt = new Rhino.Geometry.Point2d(bounds.Right - 100, bounds.Bottom - 30);
+                e.Display.Draw2dText(Title, System.Drawing.Color.Red, pt, false);
+            }
+        }
+    }
+
+
 }
