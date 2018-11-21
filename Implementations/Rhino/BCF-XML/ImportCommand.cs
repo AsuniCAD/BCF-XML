@@ -6,6 +6,9 @@ using Rhino.Geometry;
 using Rhino.Input;
 using Rhino.Input.Custom;
 using System.Xml;
+using System;
+using System.Xml.Serialization;
+using System.Collections.Generic;
 
 namespace BCFXML
 {
@@ -36,31 +39,22 @@ namespace BCFXML
         /// <param name="filepath">bcfv xml file</param>
         /// <param name="scaleFactor"></param>
         /// <returns>Camera details as XMLCamera</returns>
-        public static bool ParseVisInfo(string filepath, double scaleFactor, out XMLCamera cam, out List<XMLClippingPlane> planes)
+        public static VisualizationInfo ParseVisInfo(string filepath, double scaleFactor)
         {
-            planes = new List<XMLClippingPlane>();
-            cam = null;
-
-            // https://github.com/buildingSMART/BCF-XML/tree/release_2_1/Schemas
             try
             {
-                XmlDocument doc = new XmlDocument();
-                doc.Load(filepath);
-                XmlNode visinfo = doc.SelectSingleNode("VisualizationInfo");
-                XmlNode camera = visinfo.SelectSingleNode("PerspectiveCamera");
-                if (camera != null) cam = new XMLCamera(camera, scaleFactor);
-                XmlNode cplanes = visinfo.SelectSingleNode("ClippingPlanes");
-                if (cplanes != null) {
-                    foreach (XmlNode cp in cplanes.ChildNodes)
-                    {
-                        planes.Add(new XMLClippingPlane(cp, scaleFactor));
-                    }
+                string d = System.IO.File.ReadAllText(filepath);
+                XmlSerializer serializer = new XmlSerializer(typeof(VisualizationInfo));
+                VisualizationInfo result = null;
+                using (System.IO.TextReader reader = new System.IO.StringReader(d))
+                {
+                    result = (VisualizationInfo) serializer.Deserialize(reader);
                 }
-                return true;
+                return result;
             }
             catch
             {
-                return false;
+                return null;
             }
         }
 
@@ -101,11 +95,9 @@ namespace BCFXML
             foreach (string bcfv in bcfvs)
             {
                 // 3) translate camera & clipping plane data from xml
-                XMLCamera cam = null;
-                List<XMLClippingPlane> planes = new List<XMLClippingPlane>();
                 double scaleFactor = GetScaleFactor(doc);
-                bool success = ParseVisInfo(bcfv, scaleFactor, out cam, out planes);
-                if (!success) return Rhino.Commands.Result.Cancel;
+                VisualizationInfo vinfo = ParseVisInfo(bcfv, scaleFactor);
+                if (vinfo == null || vinfo.PerspectiveCamera == null) continue;
 
                 // 4) get active view
                 var view = doc.Views.ActiveView;
@@ -114,23 +106,26 @@ namespace BCFXML
                 vp.PushViewProjection();
 
                 // 5) apply all camera settings to Rhino camera
-                vp.CameraUp = cam.UpVector;
-                vp.SetCameraLocation(cam.Location, false);
-                vp.SetCameraDirection(cam.Direction, true);
+                vp.CameraUp = vinfo.PerspectiveCamera.CameraUpVector.toVector();
+                vp.SetCameraLocation(vinfo.PerspectiveCamera.CameraViewPoint.toPoint(scaleFactor), false);
+                vp.SetCameraDirection(vinfo.PerspectiveCamera.CameraDirection.toVector(), true);
                 vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
                 doc.NamedViews.Add(vp.Name, vp.Id);
-                
-                foreach (XMLClippingPlane plane in planes)
+
+                if (vinfo.ClippingPlanes != null)
                 {
-                    double magnitude = 100; // not sure if this value makes much sense
-                    Plane cplane = new Plane(plane.Location, plane.Direction);
-                    doc.Objects.AddClippingPlane(cplane, magnitude, magnitude, vp.Id);
+                    foreach (ClippingPlane plane in vinfo.ClippingPlanes)
+                    {
+                        double magnitude = 100; // not sure if this value makes much sense
+                        Plane cplane = new Plane(plane.Location.toPoint(scaleFactor), plane.Direction.toVector());
+                        doc.Objects.AddClippingPlane(cplane, magnitude, magnitude, vp.Id);
+                    }
                 }
 
                 bcfConduit = new BCFConduit();
-                bcfConduit.Title = vp.Name;
                 bcfConduit.Enabled = true;
                 view.Redraw();
+
             }
 
             Rhino.Display.RhinoView.SetActive += RhinoView_SetActive;
@@ -150,11 +145,14 @@ namespace BCFXML
         /// <param name="e"></param>
         private void RhinoView_SetActive(object sender, Rhino.Display.ViewEventArgs e)
         {
-            if (e.View.ActiveViewport.Name.Contains("Viewpoint"))
-                bcfConduit.Enabled = true;
+            if (e.View.ActiveViewport.Name.ToLower().Contains("viewpoint"))
+            { bcfConduit = new BCFConduit() { Enabled = true }; }
             else
+            {
                 bcfConduit.Enabled = false;
-            e.View.Document.Views.Redraw();
+                bcfConduit = null;
+            }
+             e.View.Document.Views.Redraw();
         }
     }
 
@@ -163,19 +161,15 @@ namespace BCFXML
     /// </summary>
     class BCFConduit : Rhino.Display.DisplayConduit
     {
-        /// <summary>
-        /// Title to Display
-        /// </summary>
-        public string Title = "Untitled";
-
         protected override void DrawForeground(Rhino.Display.DrawEventArgs e)
         {
             // Draw only on top of BCF Viewpoints
-            if (e.Viewport.Name.Contains("Viewpoint"))
-            {
+            if (e.Viewport.Name.ToLower().Contains("viewpoint"))
+            {                
                 var bounds = e.Viewport.Bounds;
-                var pt = new Rhino.Geometry.Point2d(bounds.Right - 100, bounds.Bottom - 30);
-                e.Display.Draw2dText(Title, System.Drawing.Color.Red, pt, false);
+                var pt = new Rhino.Geometry.Point2d(bounds.Left + 2, bounds.Bottom - 14);
+                e.Display.Draw2dRectangle(new System.Drawing.Rectangle(bounds.Left, bounds.Bottom - 30, bounds.Width, 30), System.Drawing.Color.White, 0, System.Drawing.Color.White);
+                e.Display.Draw2dText(e.Viewport.Name, System.Drawing.Color.Black, pt, false, 12);
             }
         }
     }
