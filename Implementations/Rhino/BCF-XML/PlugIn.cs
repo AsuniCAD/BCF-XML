@@ -13,6 +13,8 @@
 		public PlugIn()
 		{
 			Instance = this;
+
+			Rhino.UI.Panels.RegisterPanel(this, typeof(UI.TicketsPanel), "BCF", Properties.Resources.BCFicon);
 		}
 
 		///<summary>Gets the only instance of the BCFXML.PlugIn plug-in.</summary>

@@ -71,6 +71,7 @@
     <Compile Include="xsd-schemas\project.cs" />
     <Compile Include="xsd-schemas\version.cs" />
     <Compile Include="xsd-schemas\visinfo.cs" />
+    <Compile Include="UI\TicketsPanel.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="EmbeddedResources\BCFicon.ico" />
@@ -79,6 +80,7 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

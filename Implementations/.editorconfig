@@ -9,7 +9,7 @@ insert_final_newline = true
 # (Please don't specify an indent_size here; that has too many unintended consequences.)
 
 # Xml project files
-[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
+[*.{resx,csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
 charset = utf-8-bom
 indent_style = space
 indent_size = 2
