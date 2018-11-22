@@ -97,7 +97,7 @@ namespace BCFXML
                 // 3) translate camera & clipping plane data from xml
                 double scaleFactor = GetScaleFactor(doc);
                 VisualizationInfo vinfo = ParseVisInfo(bcfv, scaleFactor);
-                if (vinfo == null || vinfo.PerspectiveCamera == null) continue;
+                if (vinfo == null) continue;
 
                 // 4) get active view
                 var view = doc.Views.ActiveView;
@@ -105,12 +105,24 @@ namespace BCFXML
                 // save the current viewport projection
                 vp.PushViewProjection();
 
-                // 5) apply all camera settings to Rhino camera
-                vp.CameraUp = vinfo.PerspectiveCamera.CameraUpVector.toVector();
-                vp.SetCameraLocation(vinfo.PerspectiveCamera.CameraViewPoint.toPoint(scaleFactor), false);
-                vp.SetCameraDirection(vinfo.PerspectiveCamera.CameraDirection.toVector(), true);
-                vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
-                doc.NamedViews.Add(vp.Name, vp.Id);
+                if (vinfo.PerspectiveCamera != null)
+                {
+                    vp.CameraUp = vinfo.PerspectiveCamera.CameraUpVector.toVector();
+                    vp.SetCameraLocation(vinfo.PerspectiveCamera.CameraViewPoint.toPoint(scaleFactor), false);
+                    vp.SetCameraDirection(vinfo.PerspectiveCamera.CameraDirection.toVector(), true);
+                    vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
+                    doc.NamedViews.Add(vp.Name, vp.Id);
+                }
+
+                if (vinfo.OrthogonalCamera != null)
+                {
+                    vp.CameraUp = vinfo.OrthogonalCamera.CameraUpVector.toVector();
+                    vp.SetCameraLocation(vinfo.OrthogonalCamera.CameraViewPoint.toPoint(scaleFactor), false);
+                    vp.SetCameraDirection(vinfo.OrthogonalCamera.CameraDirection.toVector(), true);
+                    vp.ChangeToParallelProjection(true);
+                    vp.Name = System.IO.Path.GetFileNameWithoutExtension(bcfv);
+                    doc.NamedViews.Add(vp.Name, vp.Id);
+                }
 
                 if (vinfo.ClippingPlanes != null)
                 {
@@ -121,9 +133,9 @@ namespace BCFXML
                         doc.Objects.AddClippingPlane(cplane, magnitude, magnitude, vp.Id);
                     }
                 }
-
-                bcfConduit = new BCFConduit();
-                bcfConduit.Enabled = true;
+                
+                bcfConduit = new BCFConduit() { Visinfo = vinfo, Enabled = true };
+                
                 view.Redraw();
 
             }
@@ -161,6 +173,12 @@ namespace BCFXML
     /// </summary>
     class BCFConduit : Rhino.Display.DisplayConduit
     {
+        public VisualizationInfo Visinfo;
+
+        public System.Drawing.Color Color = System.Drawing.Color.Red;
+
+        public float Thickness = 1;
+
         protected override void DrawForeground(Rhino.Display.DrawEventArgs e)
         {
             // Draw only on top of BCF Viewpoints
@@ -168,8 +186,15 @@ namespace BCFXML
             {                
                 var bounds = e.Viewport.Bounds;
                 var pt = new Rhino.Geometry.Point2d(bounds.Left + 2, bounds.Bottom - 14);
-                e.Display.Draw2dRectangle(new System.Drawing.Rectangle(bounds.Left, bounds.Bottom - 30, bounds.Width, 30), System.Drawing.Color.White, 0, System.Drawing.Color.White);
-                e.Display.Draw2dText(e.Viewport.Name, System.Drawing.Color.Black, pt, false, 12);
+                e.Display.Draw2dRectangle(new System.Drawing.Rectangle(bounds.Left, bounds.Bottom - 20, bounds.Width, 30), System.Drawing.Color.White, 0, System.Drawing.Color.White);
+                e.Display.Draw2dText(Properties.Resources.DisplayTitle, System.Drawing.Color.Black, pt, false, 12);
+                if (Visinfo != null && Visinfo.Lines != null)
+                {
+                    foreach (Line l in Visinfo.Lines)
+                    {
+                        e.Display.Draw2dLine(l.StartPoint.toScreenPoint(), l.EndPoint.toScreenPoint(), Color, Thickness);
+                    }
+                }
             }
         }
     }

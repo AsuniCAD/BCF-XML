@@ -29,5 +29,10 @@ namespace BCFXML
         {
             return new Rhino.Geometry.Point3d(node.X * scaleFactor, node.Y * scaleFactor, node.Z * scaleFactor);
         }
+
+        public static System.Drawing.Point toScreenPoint(this Point node)
+        {
+            return new System.Drawing.Point((int)node.X , (int)node.Y);
+        }
     }
 }
